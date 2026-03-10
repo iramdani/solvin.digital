@@ -1,6 +1,28 @@
 const ss = SpreadsheetApp.getActiveSpreadsheet();
 
 /* =========================
+   CONFIG.JS INTEGRATION
+   (Server-side Configuration)
+========================= */
+const SCRIPT_CONFIG = {
+  // SCRIPT_URL: URL Web App yang sudah dideploy
+  SCRIPT_URL: "https://script.google.com/macros/s/AKfycbzVKOlsbgeUgYwpeMOLp-DcbimXfmDx5OtSNxSdvtSfiAfWlhW-pTJSlprjhShyxmJB/exec",
+  
+  // Environment (production/development)
+  ENV: "production"
+};
+
+function getScriptConfig(key) {
+  return SCRIPT_CONFIG[key] || "";
+}
+
+function testConfiguration() {
+  const url = getScriptConfig("SCRIPT_URL");
+  Logger.log("Testing Configuration Access: " + url);
+  return { status: "success", script_url: url };
+}
+
+/* =========================
    UTIL / HARDENING HELPERS
 ========================= */
 function jsonRes(data) {
@@ -98,14 +120,23 @@ function doPost(e) {
       // Validasi Signature (jika moota_secret diset di Settings)
       const mootaSecret = String(getCfgFrom_(cfg, "moota_secret") || "").trim();
       if (mootaSecret) {
-        const signature = (e.parameter && e.parameter.moota_signature) ? String(e.parameter.moota_signature).trim() : "";
-        if (signature) {
-          const computed = Utilities.computeHmacSha256Signature(payloadString, mootaSecret);
-          const computedHex = computed.map(function(chr){return (chr+256).toString(16).slice(-2)}).join("");
-          if (computedHex !== signature) {
-            return ContentService.createTextOutput("ERROR: Invalid Signature")
+        // Cek parameter 'moota_signature' (prioritas) atau 'signature' (fallback)
+        // Cloudflare Worker harus meneruskan header Signature ke query param ini
+        const signature = (e.parameter && (e.parameter.moota_signature || e.parameter.signature)) 
+                          ? String(e.parameter.moota_signature || e.parameter.signature).trim() 
+                          : "";
+        
+        if (!signature) {
+           return ContentService.createTextOutput("ERROR: Missing Signature (moota_secret is set)")
               .setMimeType(ContentService.MimeType.TEXT);
-          }
+        }
+
+        const computed = Utilities.computeHmacSha256Signature(payloadString, mootaSecret);
+        const computedHex = computed.map(function(chr){return (chr+256).toString(16).slice(-2)}).join("");
+        
+        if (computedHex !== signature) {
+          return ContentService.createTextOutput("ERROR: Invalid Signature")
+            .setMimeType(ContentService.MimeType.TEXT);
         }
       }
 
@@ -143,6 +174,8 @@ function doPost(e) {
       case "delete_page": return jsonRes(deletePage(data));
       case "check_slug": return jsonRes(checkSlug(data));
       case "save_affiliate_pixel": return jsonRes(saveAffiliatePixel(data));
+      case "get_admin_orders": return jsonRes(getAdminOrders(data));
+      case "get_admin_users": return jsonRes(getAdminUsers(data));
       case "save_bio_link": return jsonRes(saveBioLink(data));
       case "get_bio_link": return jsonRes(getBioLink(data));
       default: return jsonRes({ status: "error", message: "Aksi tidak terdaftar: " + (action || "unknown") });
@@ -384,7 +417,7 @@ function createOrder(d, cfg) {
        }
        
        // 2. WA ke User
-       const waText = `Halo *${d.nama}*, selamat datang di ${siteName}! 🎉\n\nSukses! Akses Anda untuk produk *${d.nama_produk}* telah aktif (GRATIS).\n\n🚀 *Klik link berikut untuk akses materi:*\n${accessUrl}\n\n🔐 *AKUN MEMBER AREA*\n🌐 Link: ${loginUrl}\n✉️ Email: ${email}\n🔑 Password: ${pass}\n\nTerima kasih!\n*Tim ${siteName}*`;
+       const waText = `Halo ${d.nama}, selamat datang di ${siteName}! 🎉\n\nSukses! Akses Anda untuk produk *${d.nama_produk}* telah aktif (GRATIS).\n\n🚀 *Klik link berikut untuk akses materi:*\n${accessUrl}\n\n🔐 *AKUN MEMBER AREA*\n🌐 Link: ${loginUrl}\n✉️ Email: ${email}\n🔑 Password: ${pass}\n\nTerima kasih!\n*Tim ${siteName}*`;
        sendWA(d.whatsapp, waText, cfg);
 
        // 3. Email ke User
@@ -944,11 +977,13 @@ function getAdminData(cfg) {
     return {
       status: "success",
       stats: { users: u.length - 1, orders: o.length - 1, rev: rev },
-      orders: o.slice(1).reverse(),
+      orders: o.slice(1).reverse().slice(0, 20),
       products: p.slice(1),
       pages: pg.slice(1),
       settings: t,
-      users: u.slice(1).reverse()
+      users: u.slice(1).reverse().slice(0, 20),
+      has_more_orders: (o.length - 1) > 20,
+      has_more_users: (u.length - 1) > 20
     };
   } catch (e) {
     return { status: "error", message: e.toString() };
@@ -978,6 +1013,13 @@ function saveProduct(d) {
       }
       return { status: "error", message: "ID Produk tidak ditemukan untuk diedit" };
     } else {
+      // Check for duplicate ID before appending
+      const r = s.getDataRange().getValues();
+      for (let i = 1; i < r.length; i++) {
+        if (String(r[i][0]).trim() === String(d.id).trim()) {
+           return { status: "error", message: "ID Produk sudah digunakan. Mohon refresh halaman." };
+        }
+      }
       s.appendRow(dataRow);
       return { status: "success" };
     }
@@ -1503,27 +1545,48 @@ function handleMootaWebhook(mutations, cfg) {
     const s = mustSheet_("Orders");
     const orders = s.getDataRange().getValues();
     const siteName = getCfgFrom_(cfg, "site_name") || "Sistem Premium";
+    const adminWA = getCfgFrom_(cfg, "wa_admin"); // Load once
 
-    // OPTIONAL: batasi hanya order pending max 48 jam terakhir (anti aktivasi order lama)
     const MAX_AGE_HOURS = 48;
+    const matched = [];
+    const debugLog = [];
+
+    debugLog.push("MUTATIONS: " + mutations.length);
 
     for (let m = 0; m < mutations.length; m++) {
       const mutasi = mutations[m];
-      const type = String(mutasi.type || "").toLowerCase();
+      const type = String(mutasi.type || "").toUpperCase(); // Moota sends "CR"
 
-      // HANYA PROSES UANG MASUK (CR = Credit)
-      if (type !== "cr" && type !== "credit") continue;
+      // Filter Credit only (Uang Masuk)
+      if (type !== "CR" && type !== "CREDIT") {
+        debugLog.push(`SKIP [${m}] Type=${type} (Not CR)`);
+        continue;
+      }
 
-      // Gunakan parsing float agar support desimal (misal 50000.00)
-      const nominalTransfer = parseFloat(String(mutasi.amount || 0).replace(/[^0-9.-]/g, "")) || 0;
-      if (nominalTransfer <= 0) continue;
+      // Robust Amount Parsing (Handle number or string)
+      let nominalTransfer = 0;
+      if (typeof mutasi.amount === 'number') {
+        nominalTransfer = mutasi.amount;
+      } else {
+        nominalTransfer = parseFloat(String(mutasi.amount || 0).replace(/[^0-9.-]/g, "")) || 0;
+      }
 
-      // Cari order Pending yang nominalnya SAMA PERSIS
+      if (nominalTransfer <= 0) {
+        debugLog.push(`SKIP [${m}] Amount=0`);
+        continue;
+      }
+
+      debugLog.push(`CHECKING Amount=${nominalTransfer}`);
+
+      let foundMatch = false;
+      // Iterate Orders to find match
       for (let i = 1; i < orders.length; i++) {
         const statusOrder = String(orders[i][7] || "").trim();
+        
+        // Hanya proses yang statusnya Pending
         if (statusOrder !== "Pending") continue;
 
-        // filter umur order (best-effort)
+        // Cek umur order (48 jam)
         if (MAX_AGE_HOURS > 0) {
           const dtStr = String(orders[i][8] || "").trim();
           const dt = new Date(dtStr);
@@ -1533,11 +1596,15 @@ function handleMootaWebhook(mutations, cfg) {
           }
         }
 
-        const tagihanOrder = toNumberSafe_(orders[i][6]);
-        if (tagihanOrder === nominalTransfer) {
-          // MATCH KETEMU! UBAH JADI LUNAS + update in-memory biar gak match lagi
+        const tagihanOrder = toNumberSafe_(orders[i][6]); // Col G (Index 6)
+        
+        // MATCHING LOGIC: Exact Amount (Unique Code included)
+        if (tagihanOrder == nominalTransfer) {
+          debugLog.push(`  MATCH FOUND Row ${i+1}: Inv=${orders[i][0]}`);
+          
+          // 1. UPDATE SHEET STATUS
           s.getRange(i + 1, 8).setValue("Lunas");
-          orders[i][7] = "Lunas";
+          orders[i][7] = "Lunas"; // Update local array to prevent double matching if needed
 
           const inv = orders[i][0];
           const uEmail = orders[i][1];
@@ -1546,7 +1613,7 @@ function handleMootaWebhook(mutations, cfg) {
           const pId = orders[i][4];
           const pName = orders[i][5];
 
-          // Cari Link Akses Produk
+          // 2. GET ACCESS URL
           let accessUrl = "";
           const pS = ss.getSheetByName("Access_Rules");
           if (pS) {
@@ -1556,43 +1623,59 @@ function handleMootaWebhook(mutations, cfg) {
             }
           }
 
-          // 1) WA CUSTOMER
+          // 3. SEND NOTIFICATIONS
+          
+          // A) WA Customer
           sendWA(
             uWA,
-            `🎉 *PEMBAYARAN TERVERIFIKASI OTOMATIS!* 🎉\n\nHalo *${uName}*, dana sebesar Rp ${Number(nominalTransfer).toLocaleString('id-ID')} telah berhasil diverifikasi oleh sistem kami.\n\nPesanan Anda untuk produk *${pName}* (Invoice: #${inv}) kini *Telah Aktif*.\n\n🚀 *Klik link berikut untuk mengakses materi Anda:*\n${accessUrl}\n\nTerima kasih atas kepercayaannya!\n*Tim ${siteName}*`,
+            `🎉 *PEMBAYARAN DITERIMA!* 🎉\n\nHalo *${uName}*, pembayaran Anda sebesar Rp ${Number(nominalTransfer).toLocaleString('id-ID')} telah berhasil diverifikasi otomatis.\n\nPesanan *${pName}* (Invoice: #${inv}) kini *AKTIF*.\n\n🚀 *AKSES MATERI:* \n${accessUrl}\n\nTerima kasih!\n*Tim ${siteName}*`,
             cfg
           );
 
-          // 2) EMAIL CUSTOMER
+          // B) Email Customer
           const emailHtml = `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 10px;">
-                <h2 style="color: #10b981;">Pembayaran Berhasil Diverifikasi! 🚀</h2>
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+                <h2 style="color: #10b981;">Pembayaran Berhasil! ✅</h2>
                 <p>Halo <b>${uName}</b>,</p>
-                <p>Sistem otomatis kami telah memverifikasi pembayaran Anda sebesar <b>Rp ${Number(nominalTransfer).toLocaleString('id-ID')}</b>. Akses produk <b>${pName}</b> Anda sekarang sudah aktif.</p>
+                <p>Pembayaran invoice <b>#${inv}</b> sebesar <b>Rp ${Number(nominalTransfer).toLocaleString('id-ID')}</b> telah diterima.</p>
+                <p>Silakan akses produk <b>${pName}</b> melalui tombol di bawah ini:</p>
                 <div style="text-align: center; margin: 30px 0;">
-                    <a href="${accessUrl}" style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Akses Materi Sekarang</a>
+                    <a href="${accessUrl}" style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Akses Materi</a>
                 </div>
-                <p>Terima kasih atas kepercayaannya!<br><b>Tim ${siteName}</b></p>
+                <p>Terima kasih,<br><b>Tim ${siteName}</b></p>
             </div>`;
-          sendEmail(uEmail, `Akses Terbuka: Pesanan #${inv} - ${siteName}`, emailHtml, cfg);
+          sendEmail(uEmail, `Pembayaran Sukses: #${inv} - ${siteName}`, emailHtml, cfg);
 
-          // 3) WA ADMIN
-          const adminWA = getCfgFrom_(cfg, "wa_admin");
+          // C) WA Admin
           sendWA(
             adminWA,
-            `💰 *AUTO-PAYMENT CLOSING!* 💰\n\nProduk *${pName}* telah terbayar lunas secara OTOMATIS sebesar Rp ${Number(nominalTransfer).toLocaleString('id-ID')}.\n\n👤 Customer: ${uName}\n🔖 Invoice: #${inv}\n✅ Status: Akses otomatis dikirim ke customer 🤖.`,
+            `💰 *MOOTA PAYMENT RECEIVED* 💰\n\nInv: #${inv}\nAmt: Rp ${Number(nominalTransfer).toLocaleString('id-ID')}\nUser: ${uName}\n\nStatus: Auto-Lunas by System.`,
             cfg
           );
 
-          break; // stop cari order lain untuk mutasi ini
+          foundMatch = true;
+          matched.push(inv);
+          break; // Stop searching orders for this mutation
         }
       }
+      if (!foundMatch) debugLog.push(`NO MATCH for Amount=${nominalTransfer}`);
     }
 
-    return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.TEXT);
+    const result = matched.length > 0
+      ? "PROCESSED: " + matched.join(", ")
+      : "NO_MATCHING_ORDER";
+      
+    return ContentService.createTextOutput(JSON.stringify({
+       status: "success", 
+       processed: matched, 
+       logs: debugLog 
+    })).setMimeType(ContentService.MimeType.JSON);
+
   } catch (e) {
-    return ContentService.createTextOutput("ERROR: " + e.toString())
-      .setMimeType(ContentService.MimeType.TEXT);
+    return ContentService.createTextOutput(JSON.stringify({
+       status: "error", 
+       message: e.toString() 
+    })).setMimeType(ContentService.MimeType.JSON);
   }
 }
 
@@ -1747,6 +1830,47 @@ function getBioLink(d) {
 
     return { status: "success", data: null };
   } catch (e) {
+    return { status: "error", message: e.toString() };
+  }
+}
+
+/* =========================
+   PAGINATION ACTIONS
+========================= */
+function getAdminOrders(d) {
+  try {
+    const page = Number(d.page) || 1;
+    const limit = Number(d.limit) || 20;
+    const o = mustSheet_("Orders").getDataRange().getValues();
+    const data = o.slice(1).reverse();
+    const start = (page - 1) * limit;
+    const end = start + limit;
+    
+    return {
+      status: "success",
+      data: data.slice(start, end),
+      has_more: data.length > end
+    };
+  } catch(e) {
+    return { status: "error", message: e.toString() };
+  }
+}
+
+function getAdminUsers(d) {
+  try {
+    const page = Number(d.page) || 1;
+    const limit = Number(d.limit) || 20;
+    const u = mustSheet_("Users").getDataRange().getValues();
+    const data = u.slice(1).reverse();
+    const start = (page - 1) * limit;
+    const end = start + limit;
+    
+    return {
+      status: "success",
+      data: data.slice(start, end),
+      has_more: data.length > end
+    };
+  } catch(e) {
     return { status: "error", message: e.toString() };
   }
 }

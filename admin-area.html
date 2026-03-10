@@ -4,7 +4,7 @@
     <script src="config.js?v=2026_1"></script>
     <script>
         (function() {
-            const CACHE_KEY = 'melimpah_global_settings';
+            const CACHE_KEY = 'cepat_global_settings';
             const CACHE_AGE = 60 * 60 * 1000; 
 
             function applyGlobalSettings(data) {
@@ -14,7 +14,7 @@
                     link.href = data.site_favicon;
                 }
                 if(data.site_name) {
-                    document.title = document.title.replace(/Melimpah Digital/gi, data.site_name).replace(/Melimpah/gi, data.site_name);
+                    document.title = document.title.replace(/Cepat Digital/gi, data.site_name).replace(/Cepat/gi, data.site_name);
                 }
                 const updateDomElements = () => {
                     if(data.site_name) {
@@ -215,6 +215,9 @@
                 <button onclick="switchTab('orders')" id="nav-orders" class="nav-item active w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-sm">
                     <i data-lucide="layout-dashboard" class="w-5 h-5"></i> Dashboard
                 </button>
+                <button onclick="switchTab('admin-orders')" id="nav-admin-orders" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-sm text-left">
+                    <i data-lucide="clipboard-list" class="w-5 h-5"></i> Admin Orders
+                </button>
                 <button onclick="switchTab('members')" id="nav-members" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-sm">
                     <i data-lucide="users" class="w-5 h-5"></i> Data Member
                 </button>
@@ -312,7 +315,17 @@
                                 <tbody id="list-orders" class="divide-y divide-slate-100"></tbody>
                             </table>
                         </div>
+                        <div class="p-6 border-t border-slate-100 text-center hidden" id="more-orders-container">
+                            <button onclick="loadMoreOrders()" id="btn-more-orders" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 uppercase tracking-wider bg-indigo-50 hover:bg-indigo-100 px-6 py-3 rounded-xl transition-all">
+                                Muat Lebih Banyak
+                            </button>
+                        </div>
                     </div>
+                </div>
+
+                <!-- ADMIN ORDERS TAB (IFRAME) -->
+                <div id="tab-admin-orders" class="tab-content h-[85vh]">
+                    <iframe id="iframe-admin-orders" data-src="admin-orders.html" class="w-full h-full rounded-2xl border border-slate-200 shadow-sm bg-white" frameborder="0"></iframe>
                 </div>
 
                 <!-- MEMBERS TAB -->
@@ -335,6 +348,11 @@
                                 </thead>
                                 <tbody class="divide-y divide-slate-100"></tbody>
                             </table>
+                        </div>
+                        <div class="p-6 border-t border-slate-100 text-center hidden" id="more-members-container">
+                            <button onclick="loadMoreMembers()" id="btn-more-members" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 uppercase tracking-wider bg-indigo-50 hover:bg-indigo-100 px-6 py-3 rounded-xl transition-all">
+                                Muat Lebih Banyak
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -831,9 +849,12 @@
             } 
         };
 
-        function renderMembers(members) {
+        let currentOrderPage = 1;
+        let currentUserPage = 1;
+
+        function renderMembers(members, append = false) {
             const list = document.getElementById('list-members').getElementsByTagName('tbody')[0];
-            list.innerHTML = '';
+            if(!append) list.innerHTML = '';
             members.forEach(m => {
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-slate-50 transition-colors';
@@ -853,11 +874,9 @@
             });
         }
 
-        function renderAdminUI(r) {
-            renderMembers(r.users || []);
-            cachedPages = r.pages || []; cachedProducts = r.products || [];
-            document.getElementById('stat-orders').innerText = (r.stats.orders || 0) + ' Transaksi'; document.getElementById('stat-rev').innerText = 'Rp ' + Number(r.stats.rev || 0).toLocaleString('id-ID');
-            document.getElementById('list-orders').innerHTML = r.orders.map(o => `
+        function renderOrders(orders, append = false) {
+            const list = document.getElementById('list-orders');
+            const html = orders.map(o => `
                 <tr class="hover:bg-slate-50 transition-colors">
                     <td class="px-8 py-5 font-mono font-bold text-indigo-600 text-xs">${o[0]}</td>
                     <td class="px-8 py-5">
@@ -876,8 +895,62 @@
                     </td>
                 </tr>`).join('');
             
-            document.getElementById('count-prod').innerText = cachedProducts.length; 
+            if(append) list.insertAdjacentHTML('beforeend', html);
+            else list.innerHTML = html;
+        }
+
+        async function loadMoreOrders() {
+            const btn = document.getElementById('btn-more-orders');
+            const oriText = btn.innerText;
+            btn.innerText = 'Loading...'; btn.disabled = true;
+            try {
+                currentOrderPage++;
+                const res = await fetch(SCRIPT_URL, { 
+                    method: 'POST', 
+                    body: JSON.stringify({ action: 'get_admin_orders', page: currentOrderPage, limit: 20 }) 
+                });
+                const r = await res.json();
+                if(r.status === 'success') {
+                    renderOrders(r.data, true);
+                    document.getElementById('more-orders-container').classList.toggle('hidden', !r.has_more);
+                }
+            } catch(e) { console.error(e); }
+            btn.innerText = oriText; btn.disabled = false;
+        }
+
+        async function loadMoreMembers() {
+            const btn = document.getElementById('btn-more-members');
+            const oriText = btn.innerText;
+            btn.innerText = 'Loading...'; btn.disabled = true;
+            try {
+                currentUserPage++;
+                const res = await fetch(SCRIPT_URL, { 
+                    method: 'POST', 
+                    body: JSON.stringify({ action: 'get_admin_users', page: currentUserPage, limit: 20 }) 
+                });
+                const r = await res.json();
+                if(r.status === 'success') {
+                    renderMembers(r.data, true);
+                    document.getElementById('more-members-container').classList.toggle('hidden', !r.has_more);
+                }
+            } catch(e) { console.error(e); }
+            btn.innerText = oriText; btn.disabled = false;
+        }
+
+        function renderAdminUI(r) {
+            currentOrderPage = 1;
+            currentUserPage = 1;
+            renderMembers(r.users || []);
+            renderOrders(r.orders || []);
             
+            document.getElementById('more-orders-container').classList.toggle('hidden', !r.has_more_orders);
+            document.getElementById('more-members-container').classList.toggle('hidden', !r.has_more_users);
+
+            cachedPages = r.pages || []; cachedProducts = r.products || [];
+            document.getElementById('stat-orders').innerText = (r.stats.orders || 0) + ' Transaksi'; document.getElementById('stat-rev').innerText = 'Rp ' + Number(r.stats.rev || 0).toLocaleString('id-ID');
+            
+            document.getElementById('count-prod').innerText = cachedProducts.length; 
+
             document.getElementById('list-products').innerHTML = [...cachedProducts].reverse().map(p => `
                 <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group">
                     <div class="flex justify-between items-start mb-6">
@@ -935,13 +1008,28 @@
             const syncLabel = document.getElementById('sync-status');
             
             if (cachedDataStr) { 
-                renderAdminUI(JSON.parse(cachedDataStr)); 
+                try {
+                    renderAdminUI(JSON.parse(cachedDataStr)); 
+                } catch(e) { console.error(e); }
+                // Show syncing indicator initially if we have cache, 
+                // but we'll hide it in finally block
                 syncLabel.classList.remove('hidden');
             }
             
             try { 
                 if(typeof SCRIPT_URL === 'undefined') return;
-                const res = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'get_admin_data' }) }); 
+                
+                // Add timeout for better UX
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+                const res = await fetch(SCRIPT_URL, { 
+                    method: 'POST', 
+                    body: JSON.stringify({ action: 'get_admin_data' }),
+                    signal: controller.signal
+                }); 
+                clearTimeout(timeoutId);
+
                 const r = await res.json(); 
                 if(r.status === 'success') { 
                     const freshDataStr = JSON.stringify(r);
@@ -949,9 +1037,13 @@
                         localStorage.setItem(CACHE_KEY_ADMIN, freshDataStr); 
                         renderAdminUI(r); 
                     }
-                    syncLabel.classList.add('hidden');
                 } 
-            } catch (err) { console.error(err); }
+            } catch (err) { 
+                console.error("Sync error:", err); 
+            } finally {
+                // Ensure sync label is always hidden after attempt
+                syncLabel.classList.add('hidden');
+            }
         }
 
         function forceSync() { 
@@ -1054,7 +1146,13 @@ src="https://www.facebook.com/tr?id=${pixelId}&ev=PageView&noscript=1"
         function editProd(id) { 
             const p = cachedProducts.find(x => x[0] === id); 
             if(!p) return; 
-            document.getElementById('p-id').value = p[0]; 
+            
+            const idInput = document.getElementById('p-id');
+            idInput.value = p[0]; 
+            idInput.readOnly = true;
+            idInput.classList.add('bg-slate-100', 'text-slate-500', 'cursor-not-allowed');
+            idInput.classList.remove('bg-slate-50', 'text-slate-700');
+
             document.getElementById('p-title').value = p[1]; 
             document.getElementById('p-desc').value = p[2]; 
             document.getElementById('p-url').value = p[3]; 
@@ -1210,10 +1308,19 @@ src="https://www.facebook.com/tr?id=${pixelId}&ev=PageView&noscript=1"
             document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active')); 
             document.getElementById('tab-'+t).classList.add('active'); 
             document.getElementById('nav-'+t).classList.add('active'); 
-            const titles = { 'orders': 'Dashboard', 'members': 'Data Member', 'products': 'Produk & Layanan', 'pages': 'Halaman CMS', 'media': 'Media Center', 'settings': 'Pengaturan Sistem' };
+            const titles = { 'orders': 'Dashboard', 'admin-orders': 'Manajemen Pesanan', 'members': 'Data Member', 'products': 'Produk & Layanan', 'pages': 'Halaman CMS', 'media': 'Media Center', 'settings': 'Pengaturan Sistem' };
             document.getElementById('tab-title').innerText = titles[t] || 'Dashboard';
             lucide.createIcons();
             if(t === 'media') loadMediaFiles(); // Auto load media
+            
+            // Lazy load Admin Orders
+            if (t === 'admin-orders') {
+                const iframe = document.getElementById('iframe-admin-orders');
+                if (iframe && !iframe.getAttribute('src')) {
+                    iframe.src = iframe.getAttribute('data-src');
+                }
+            }
+
             if(window.innerWidth < 768) toggleSidebar(); 
         }
 
@@ -1253,7 +1360,38 @@ src="https://www.facebook.com/tr?id=${pixelId}&ev=PageView&noscript=1"
             }
         }
 
-        function openProdModal() { document.getElementById('form-prod').reset(); updateProdPreview(''); document.getElementById('p-is-edit').value = 'false'; document.getElementById('modal-prod').classList.remove('hidden'); }
+        function openProdModal() { 
+            document.getElementById('form-prod').reset(); 
+            updateProdPreview(''); 
+            document.getElementById('p-is-edit').value = 'false'; 
+            
+            // Auto-generate Unique ID
+            const prefix = 'PRD';
+            // 3 random chars (base36)
+            const random = Math.random().toString(36).substring(2, 5).toUpperCase();
+            // 3 last digits of timestamp
+            const timestamp = Date.now().toString().slice(-3);
+            let newId = `${prefix}-${random}${timestamp}`;
+            
+            // Ensure uniqueness against cachedProducts
+            if (typeof cachedProducts !== 'undefined' && Array.isArray(cachedProducts)) {
+                let counter = 1;
+                const originalId = newId;
+                while(cachedProducts.some(p => p[0] === newId)) {
+                    newId = `${originalId}-${counter}`;
+                    counter++;
+                }
+            }
+            
+            const idInput = document.getElementById('p-id');
+            idInput.value = newId;
+            idInput.readOnly = true;
+            // Visual feedback for read-only
+            idInput.classList.add('bg-slate-100', 'text-slate-500', 'cursor-not-allowed');
+            idInput.classList.remove('bg-slate-50', 'text-slate-700');
+            
+            document.getElementById('modal-prod').classList.remove('hidden'); 
+        }
         function openPageModal() { document.getElementById('form-page').reset(); document.getElementById('pg-is-edit').value = 'false'; document.getElementById('modal-page').classList.remove('hidden'); }
         function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
         function logout() { sessionStorage.clear(); localStorage.removeItem(CACHE_KEY_ADMIN); location.reload(); }
