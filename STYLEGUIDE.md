@@ -1,59 +1,74 @@
-# Style Guide - Solvin Digital
+# Solvin Digital Design System (Glassmorphism)
 
-Dokumentasi sistem desain dan komponen UI yang digunakan dalam redesain Solvin Digital.
+## Brand Identity
+- **Primary Color**: `#ff7375` (Rose/Coral)
+- **Tagline**: Solusi Bisnis Produk Digital
+- **Philosophy**: Modern, Premium, Translucent, and High-Contrast.
 
-## **Sistem Desain (Design Tokens)**
+## Design Tokens
 
-Sistem desain ini dipusatkan di [theme.js](file:///D:/Solvin%20Digital/theme.js) dan menggunakan Tailwind CSS sebagai framework utama.
-
-### **1. Palet Warna**
-*   **Primary:** `#fd9c99` (Aksen utama untuk button, links, dan highlight).
-*   **Dark Background:** `#0f172a` (Slate 900).
-*   **Dark Card:** `#1e293b` (Slate 800).
-*   **Success:** Emerald 500 (`#10b981`).
-*   **Error:** Red 500 (`#ef4444`).
-*   **Warning:** Amber 500 (`#f59e0b`).
-
-### **2. Tipografi**
-*   **Font Family:** 'Plus Jakarta Sans', sans-serif.
-*   **Heading:** Font-black (900) atau font-extrabold (800) untuk visual hierarchy yang kuat.
-*   **Body:** Font-medium (500) atau font-semibold (600) untuk keterbacaan optimal.
-
-### **3. Efek Visual**
-*   **Glassmorphism:** Digunakan pada kartu dan navigasi dengan `backdrop-blur-xl` dan border transparan.
-*   **Shadow Soft:** Shadow halus untuk kedalaman visual tanpa kesan berat.
-*   **Border Radius:** Konsisten menggunakan `2rem` (32px) atau `2.5rem` untuk tampilan modern yang "rounded".
-
----
-
-## **Komponen Utama**
-
-### **1. Glass Card**
-Kartu dengan efek kaca yang responsif terhadap mode gelap/terang.
-```html
-<div class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200/50 dark:border-slate-800/50 shadow-soft rounded-[2rem] p-8">
-    <!-- Konten -->
-</div>
+### Colors (Tailwind Config)
+```javascript
+colors: {
+    primary: {
+        DEFAULT: '#ff7375',
+        light: '#ff9ea0',
+        dark: '#e66769',
+    },
+    darkBg: '#0f172a',
+    darkCard: 'rgba(30, 41, 59, 0.7)',
+}
 ```
 
-### **2. Primary Button**
-Tombol aksi utama dengan shadow berwarna primary.
+### Components
+
+#### 1. Glass Card (.glass-card)
+The core component of the UI.
+```css
+.glass-card {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+}
+.dark .glass-card {
+    background: rgba(30, 41, 59, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+```
+
+#### 2. Primary Buttons
 ```html
-<button class="bg-primary text-white px-6 py-3 rounded-xl font-bold text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all">
-    Aksi Utama
+<button class="bg-primary text-white px-8 py-4 rounded-2xl font-black shadow-primary hover:scale-[1.02] transition-transform text-xs uppercase tracking-widest">
+    Action Button
 </button>
 ```
 
-### **3. Dashboard Chart**
-Menggunakan library Chart.js dengan tema warna primary dan transisi smooth. Mendukung filter periode (7h, 14h, 30h, 60h, 180h, 1thn).
+#### 3. Typography
+- **Font Family**: 'Plus Jakarta Sans', sans-serif
+- **Weights**: 
+  - Regular (400)
+  - Medium (500)
+  - Semibold (600)
+  - Bold (700)
+  - Black (800) -> Used for headings and primary UI labels.
 
-### **4. Navigation Bar**
-Sidebar fixed di desktop dan drawer di mobile, dengan indikator aktif yang menggunakan background opacity primary.
+#### 4. Border Radius
+- `rounded-4xl`: 2.5rem (Used for large containers)
+- `rounded-3xl`: 1.5rem (Used for modals/large cards)
+- `rounded-2xl`: 1rem (Used for small cards/buttons)
 
----
+## Interactive Elements
+- **Micro-interactions**: Hover effects using `hover:scale-[1.02]` and `transition-all`.
+- **Transitions**: Smooth theme switching using `transition-theme` class on `html`.
+- **Loading**: Lazy loading for images and skeleton loaders for data fetching.
 
-## **Prinsip Pengembangan**
-*   **Mobile-First:** Seluruh halaman dioptimalkan untuk perangkat mobile terlebih dahulu.
-*   **Dark Mode Support:** Menggunakan class `dark` pada root element dan disimpan di `localStorage` dengan key `solvin_theme`.
-*   **Stale-While-Revalidate:** Strategi caching menggunakan `localStorage` untuk memuat data global dan katalog produk secara instan sebelum sinkronisasi ke server.
-*   **Lucide Icons:** Konsistensi icon menggunakan library Lucide.
+## Layout System
+- **Mobile-First**: 
+  - Sidebar hidden on mobile (accessible via hamburger menu).
+  - Floating action buttons for primary mobile tasks.
+  - Stacked grids for stats and product lists.
+
+## Iconography
+- **Library**: Lucide Icons
+- **Style**: Thin strokes (2px) with consistent coloring.

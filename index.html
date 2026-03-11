@@ -1,264 +1,310 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" class="transition-theme">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solvin Digital - Solusi Bisnis Produk Digital</title>
+    
+    <!-- Config & Theme -->
     <script src="config.js?v=2026_1"></script>
-
+    <script src="theme.js"></script>
+    
+    <!-- External Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
     <script>
+        // Apply Tailwind Config from theme.js
+        if (window.tailwindConfig) {
+            tailwind.config = window.tailwindConfig;
+        }
+
+        // Global Settings Injection (Legacy Support)
         (function() {
             const CACHE_KEY = 'cepat_global_settings';
-            const CACHE_AGE = 60 * 60 * 1000; 
-            window.waAdminGlobal = '';
-
-            function applyGlobalSettings(data) {
-                // Eksekusi Cepat (Favicon & Title Browser)
+            window.applyGlobalSettings = function(data) {
                 if(data.site_favicon) {
                     let link = document.querySelector("link[rel~='icon']");
                     if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); }
                     link.href = data.site_favicon;
                 }
-                if(data.wa_admin) window.waAdminGlobal = data.wa_admin;
-                
-                // Helper Meta Tags
-                const setMeta = (attrName, attrValue, content) => {
-                    if(!content) return;
-                    let element = document.querySelector(`meta[${attrName}="${attrValue}"]`);
-                    if (!element) {
-                        element = document.createElement('meta');
-                        element.setAttribute(attrName, attrValue);
-                        document.head.appendChild(element);
-                    }
-                    element.setAttribute('content', content);
-                };
-
-                // Auto Replace Text di Title Browser & Meta Title
                 if(data.site_name) {
-                    document.title = document.title.replace(/Cepat Digital/gi, data.site_name).replace(/Cepat/gi, data.site_name);
-                    setMeta('property', 'og:title', data.site_name);
-                    setMeta('name', 'title', data.site_name);
+                    document.title = `${data.site_name} - Solusi Bisnis Produk Digital`;
+                    document.querySelectorAll('.dyn-site-name').forEach(el => { el.innerText = data.site_name; });
                 }
-
-                // Tagline -> Meta Description
-                if(data.site_tagline) {
-                    setMeta('property', 'og:description', data.site_tagline);
-                    setMeta('name', 'description', data.site_tagline);
-                }
-
-                // Logo URL -> Meta Image
                 if(data.site_logo) {
-                    setMeta('property', 'og:image', data.site_logo);
-                    setMeta('name', 'image', data.site_logo);
-                }
-
-                // Eksekusi DOM HTML (Menyuntikkan Teks ke Halaman)
-                const updateDomElements = () => {
-                    if(data.site_name) {
-                        document.querySelectorAll('.dyn-site-name').forEach(el => { el.innerText = data.site_name; });
-                        const logoImg = document.getElementById('dyn-site-logo');
-                        if(logoImg && logoImg.alt === '') logoImg.alt = data.site_name;
-                    }
-                    
-                    // INJEKSI TAGLINE WEB
-                    if(data.site_tagline) {
-                        document.querySelectorAll('.dyn-site-tagline').forEach(el => {
-                            el.innerText = data.site_tagline;
-                        });
-                    }
-
-                    // INJEKSI LOGO URL
-                if(data.site_logo) {
-                    const img = document.getElementById('dyn-site-logo');
-                    if (img) {
+                    document.querySelectorAll('.dyn-site-logo').forEach(img => {
                         img.src = data.site_logo;
                         img.classList.remove('hidden');
-                        img.classList.add('block'); // Ensure it displays
-                    }
-                    const fb = document.getElementById('logo-fallback');
-                    if (fb) fb.classList.add('hidden');
-                }
-
-                    // INJEKSI KONTAK
-                    if(data.contact_email) {
-                        const a = document.getElementById('dyn-email-link');
-                        if(a) { a.href = 'mailto:' + data.contact_email; a.innerText = data.contact_email; }
-                    }
-                    if(data.wa_admin) {
-                        const wa = String(data.wa_admin).replace(/[^0-9]/g,'');
-                        const a = document.getElementById('dyn-wa-link');
-                        if(a) { a.href = 'https://wa.me/' + wa; a.innerText = (wa.startsWith('62')?'+':'') + wa; }
-                    }
-                };
-
-                if (document.readyState === 'loading') {
-                    document.addEventListener('DOMContentLoaded', updateDomElements);
-                } else {
-                    updateDomElements();
+                    });
+                    document.querySelectorAll('.logo-fallback').forEach(fb => fb.classList.add('hidden'));
                 }
             }
-
             const cachedStr = localStorage.getItem(CACHE_KEY);
-            let cached = null;
-            try { cached = JSON.parse(cachedStr); } catch(e){}
-            const now = Date.now();
-
-            if (cached && cached.data) { applyGlobalSettings(cached.data); }
-
-            // Menggunakan SCRIPT_URL yang ditarik dari config.js
-            // Strategy: Stale-While-Revalidate
-            // 1. Tampilkan cache jika ada (Instant Loading)
-            // 2. Selalu fetch background untuk update terbaru (Eventual Consistency)
-            
-            if(typeof SCRIPT_URL === 'undefined') { console.error("SCRIPT_URL belum didefinisikan di config.js!"); return; }
-
-            fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'get_global_settings' }) })
-                .then(res => res.json())
-                .then(r => {
-                    if(r.status === 'success') {
-                        // Pastikan format data konsisten untuk perbandingan
-                        const currentDataStr = JSON.stringify(r.data);
-                        const cachedDataStr = cached ? JSON.stringify(cached.data) : "";
-
-                        // Hanya update jika ada perbedaan data
-                        if (!cached || cachedDataStr !== currentDataStr) {
-                            localStorage.setItem(CACHE_KEY, JSON.stringify({ data: r.data, time: Date.now() }));
-                            applyGlobalSettings(r.data);
-                        }
-                    }
-                }).catch(e => console.error("Global Settings Sync Failed", e));
+            try { 
+                const cached = JSON.parse(cachedStr); 
+                if (cached && cached.data) applyGlobalSettings(cached.data);
+            } catch(e){}
         })();
     </script>
 
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cepat Digital Teknologi</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; }
-        /* Animasi Muncul Halus */
-        .fade-in { animation: fadeIn 0.4s ease-out forwards; opacity: 0; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-        /* Delay beruntun untuk grid produk */
-        .delay-1 { animation-delay: 0.1s; }
-        .delay-2 { animation-delay: 0.2s; }
-        .delay-3 { animation-delay: 0.3s; }
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            scroll-behavior: smooth;
+        }
+        .bg-mesh {
+            background-color: #ffffff;
+            background-image: radial-gradient(at 0% 0%, rgba(255, 115, 117, 0.15) 0px, transparent 50%),
+                              radial-gradient(at 100% 0%, rgba(255, 115, 117, 0.1) 0px, transparent 50%),
+                              radial-gradient(at 100% 100%, rgba(255, 115, 117, 0.15) 0px, transparent 50%),
+                              radial-gradient(at 0% 100%, rgba(255, 115, 117, 0.1) 0px, transparent 50%);
+        }
+        .dark .bg-mesh {
+            background-color: #0f172a;
+            background-image: radial-gradient(at 0% 0%, rgba(255, 115, 117, 0.1) 0px, transparent 50%),
+                              radial-gradient(at 100% 0%, rgba(255, 115, 117, 0.05) 0px, transparent 50%);
+        }
+        .hero-text {
+            background: linear-gradient(135deg, #ff7375 0%, #f84b4e 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .animate-float {
+            animation: float 6s ease-in-out infinite;
+        }
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+            100% { transform: translateY(0px); }
+        }
     </style>
 </head>
-<body class="bg-[#f8f9fa] text-slate-800">
+<body class="bg-mesh text-slate-900 dark:text-slate-100 antialiased min-h-screen">
 
-    <header class="bg-white/80 backdrop-blur-md border-b sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center gap-4">
-           <div class="flex-1 flex items-center gap-3 min-w-0">
-                <img id="dyn-site-logo" src="" alt="" class="h-8 md:h-10 w-auto hidden select-none object-contain flex-shrink-0 transition-transform hover:scale-105" loading="lazy">
-                <i id="logo-fallback" data-lucide="layers" class="w-8 h-8 text-indigo-600 flex-shrink-0 transition-transform hover:rotate-12"></i>
-                <strong class="dyn-site-name text-lg md:text-2xl font-black text-indigo-600 tracking-tighter uppercase truncate block">CEPAT DIGITAL TEKNOLOGI</strong>
+    <!-- Navbar -->
+    <nav class="fixed top-0 left-0 right-0 z-50 px-6 py-4">
+        <div class="max-w-7xl mx-auto">
+            <div class="glass rounded-3xl px-8 py-4 flex items-center justify-between shadow-glass border-white/20 dark:border-white/5">
+                <div class="flex items-center gap-3">
+                    <div class="logo-fallback w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary/20">
+                        <i data-lucide="zap" class="w-6 h-6 fill-current"></i>
+                    </div>
+                    <img src="" class="dyn-site-logo h-10 w-auto hidden" alt="Logo">
+                    <span class="font-extrabold text-2xl tracking-tight dyn-site-name">Solvin Digital</span>
+                </div>
+                
+                <div class="hidden md:flex items-center gap-8 font-bold text-sm text-slate-600 dark:text-slate-300">
+                    <a href="#home" class="hover:text-primary transition-colors">Beranda</a>
+                    <a href="#about" class="hover:text-primary transition-colors">Tentang Kami</a>
+                    <a href="#catalog" class="hover:text-primary transition-colors">Katalog</a>
+                    <a href="login.html" class="hover:text-primary transition-colors">Login Member</a>
+                </div>
+
+                <div class="flex items-center gap-4">
+                    <!-- Theme Toggle -->
+                    <button onclick="toggleDarkMode()" class="p-2.5 rounded-2xl glass hover:bg-white/40 dark:hover:bg-slate-800/40 transition-all text-slate-600 dark:text-slate-400">
+                        <i data-lucide="sun" class="w-5 h-5 theme-icon-sun hidden"></i>
+                        <i data-lucide="moon" class="w-5 h-5 theme-icon-moon"></i>
+                    </button>
+                    <a href="#catalog" class="hidden sm:block bg-primary text-white px-6 py-3 rounded-2xl font-bold text-sm shadow-primary hover:scale-105 transition-all">
+                        Mulai Sekarang
+                    </a>
+                </div>
             </div>
-            <a href="login.html" class="flex-shrink-0 bg-indigo-600 text-white px-5 py-2.5 md:px-6 md:py-3 rounded-full font-bold text-xs md:text-sm shadow-lg shadow-indigo-200 hover:bg-indigo-700 hover:shadow-indigo-300 hover:-translate-y-0.5 transition-all flex items-center gap-2 group whitespace-nowrap">
-                <span>Login</span>
-                <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
-            </a>
         </div>
-    </header>
+    </nav>
 
-    <section class="max-w-7xl mx-auto px-6 py-20 text-center">
-        <div class="inline-block bg-indigo-50 text-indigo-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest mb-6 fade-in">Mulai Bisnis Anda dari Sini</div>
-        <h1 class="text-4xl md:text-6xl font-black tracking-tight mb-6 text-slate-900 fade-in delay-1">Produk Digital Praktis untuk <br><span class="text-indigo-600">UMKM yang Baru Mulai</span></h1>
-        <p class="text-xl md:text-2xl text-slate-500 max-w-2xl mx-auto mb-10 fade-in delay-2 font-medium">Akses produk digital yang dirancang khusus untuk UMKM pemula—langsung pakai, langsung jalan, tanpa perlu pengalaman teknis.</p>
-        <a href="#katalog" class="inline-block bg-slate-900 text-white px-8 py-4 rounded-full font-bold text-lg shadow-xl shadow-slate-300 hover:scale-105 transition-all fade-in delay-3">Jelajahi Katalog Sekarang</a>
+    <!-- Hero Section -->
+    <section id="home" class="relative pt-40 pb-20 px-6 overflow-hidden">
+        <div class="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-16 relative z-10">
+            <div class="flex-1 text-center lg:text-left space-y-8">
+                <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border-primary/20 text-primary text-xs font-bold uppercase tracking-widest animate-fade-in">
+                    <i data-lucide="sparkles" class="w-4 h-4"></i> Peluang Bisnis Produk Digital
+                </div>
+                <h1 class="text-5xl md:text-7xl font-black text-slate-900 dark:text-white leading-[1.1] tracking-tight">
+                    Mulai Bisnis Digital <br>
+                    <span class="hero-text">Tanpa Ribet</span> <br>
+                    Bikin Produk!
+                </h1>
+                <p class="text-lg md:text-xl text-slate-500 dark:text-slate-400 font-medium leading-relaxed max-w-2xl mx-auto lg:mx-0">
+                    Solvin Digital membantu pemula memulai bisnis produk digital dengan paket siap jual. 
+                    <span class="text-slate-900 dark:text-white font-bold">Aku hasilkan Rp100 juta dalam 3 bulan pertama,</span> 
+                    sekarang waktunya aku berbagi rahasia & produknya untuk kamu!
+                </p>
+                <div class="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start pt-4">
+                    <a href="#catalog" class="w-full sm:w-auto bg-primary text-white px-10 py-5 rounded-3xl font-black text-sm uppercase tracking-widest shadow-xl shadow-primary/30 hover:scale-105 hover:-translate-y-1 transition-all">
+                        Ambil Peluang Sekarang
+                    </a>
+                    <a href="#about" class="w-full sm:w-auto glass px-10 py-5 rounded-3xl font-black text-sm uppercase tracking-widest hover:bg-white/40 dark:hover:bg-slate-800/40 transition-all">
+                        Pelajari Lebih Lanjut
+                    </a>
+                </div>
+            </div>
+            <div class="flex-1 relative">
+                <div class="absolute inset-0 bg-primary/20 rounded-full blur-[100px] -z-10 animate-pulse"></div>
+                <div class="glass-card p-4 rounded-[3rem] shadow-glass border-white/40 animate-float">
+                    <img src="https://illustrations.popsy.co/amber/success.svg" alt="Success Illustration" class="w-full h-auto max-w-lg mx-auto">
+                </div>
+            </div>
+        </div>
     </section>
 
-    <section id="katalog" class="max-w-7xl mx-auto px-6 py-10 mb-20 scroll-mt-24">
-        <div class="text-center mb-12">
-            <h2 class="text-3xl font-black mb-4">Pilihan Produk Digital</h2>
-            <p class="text-slate-500">Sudah digunakan ribuan pelaku UMKM di seluruh Indonesia.</p>
-        </div>
-        
-        <div id="public-products" class="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-8">
-            <div id="katalog-loader" class="col-span-full text-center py-10">
-                <div class="animate-spin w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest animate-pulse">Memuat Katalog Produk...</p>
+    <!-- About Section -->
+    <section id="about" class="py-20 px-6 relative">
+        <div class="max-w-7xl mx-auto">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+                <div class="order-2 lg:order-1 relative">
+                    <div class="glass-card rounded-[3rem] p-10 space-y-6 border-white/20">
+                        <div class="grid grid-cols-2 gap-6">
+                            <div class="p-6 rounded-3xl bg-emerald-500/10 border border-emerald-500/20 text-center">
+                                <h4 class="text-4xl font-black text-emerald-500 mb-2">100jt+</h4>
+                                <p class="text-xs font-bold text-slate-500 uppercase tracking-widest">Penghasilan</p>
+                            </div>
+                            <div class="p-6 rounded-3xl bg-blue-500/10 border border-blue-500/20 text-center">
+                                <h4 class="text-4xl font-black text-blue-500 mb-2">3 Bln</h4>
+                                <p class="text-xs font-bold text-slate-500 uppercase tracking-widest">Waktu Singkat</p>
+                            </div>
+                        </div>
+                        <p class="text-slate-600 dark:text-slate-400 leading-relaxed font-medium italic">
+                            "Sekarang bayangin kalau kamu langsung punya paket produk siap jual tanpa perlu bikin dari nol. Nggak usah pusing riset, desain, atau nulis copywriting. Semua sudah aku siapkan!"
+                        </p>
+                    </div>
+                </div>
+                <div class="order-1 lg:order-2 space-y-6">
+                    <h2 class="text-4xl md:text-5xl font-black text-slate-900 dark:text-white leading-tight">
+                        Produk Terbukti Laris & <br>
+                        <span class="text-primary">Siap Branding Sendiri</span>
+                    </h2>
+                    <p class="text-lg text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
+                        Produk ini sudah terbukti laris terjual dan bisa langsung kamu branding jadi milikmu sendiri. 
+                        Nikmati <span class="text-slate-900 dark:text-white font-bold">100% keuntungan</span> tanpa potongan sama sekali!
+                    </p>
+                    <ul class="space-y-4 pt-4">
+                        <li class="flex items-center gap-4 font-bold text-slate-700 dark:text-slate-300">
+                            <div class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                <i data-lucide="check" class="w-5 h-5"></i>
+                            </div>
+                            Tanpa perlu pusing riset produk
+                        </li>
+                        <li class="flex items-center gap-4 font-bold text-slate-700 dark:text-slate-300">
+                            <div class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                <i data-lucide="check" class="w-5 h-5"></i>
+                            </div>
+                            Copywriting & desain sudah disiapkan
+                        </li>
+                        <li class="flex items-center gap-4 font-bold text-slate-700 dark:text-slate-300">
+                            <div class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                <i data-lucide="check" class="w-5 h-5"></i>
+                            </div>
+                            Bisa branding pakai nama sendiri
+                        </li>
+                    </ul>
+                </div>
             </div>
         </div>
     </section>
 
-    <footer class="bg-white border-t py-12 mt-20">
-        <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
-            <div>
-                <h3 class="text-xl font-black text-indigo-600 mb-4 dyn-site-name uppercase">CEPAT</h3>
-                <p class="text-sm text-slate-500 dyn-site-tagline">Platform penyedia produk digital dan kursus online terpercaya di Indonesia.</p>
+    <!-- Catalog Section -->
+    <section id="catalog" class="py-20 px-6">
+        <div class="max-w-7xl mx-auto space-y-12">
+            <div class="text-center space-y-4">
+                <h2 class="text-4xl md:text-6xl font-black text-slate-900 dark:text-white tracking-tight">Katalog Produk Utama</h2>
+                <p class="text-lg text-slate-500 dark:text-slate-400 font-medium max-w-2xl mx-auto">
+                    Pilih produk digital terbaik yang bisa kamu jual ulang hari ini juga!
+                </p>
             </div>
-            <div>
-                <h4 class="font-bold mb-4 text-slate-800">Informasi</h4>
-                <ul class="text-sm text-slate-500 space-y-2">
-                    <li><a href="/p.html?s=tentang-kami" class="hover:text-indigo-600 transition-colors">Tentang Kami</a></li>
-                    <li><a href="/p.html?s=syarat-ketentuan" class="hover:text-indigo-600 transition-colors">Syarat & Ketentuan</a></li>
-                    <li><a href="/p.html?s=kebijakan-privasi" class="hover:text-indigo-600 transition-colors">Kebijakan Privasi</a></li>
-                </ul>
-            </div>
-            <div>
-                <h4 class="font-bold mb-4 text-slate-800">Hubungi Kami</h4>
-                <p class="text-sm text-slate-500 mb-2">Email: <a id="dyn-email-link" href="#" class="text-indigo-600 hover:underline">...</a></p>
-                <p class="text-sm text-slate-500">WhatsApp: <a id="dyn-wa-link" href="#" class="text-indigo-600 hover:underline">...</a></p>
+
+            <!-- Product Grid -->
+            <div id="product-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Skeletons -->
+                <div class="glass-card rounded-[2.5rem] p-6 h-96 animate-pulse"></div>
+                <div class="glass-card rounded-[2.5rem] p-6 h-96 animate-pulse"></div>
+                <div class="glass-card rounded-[2.5rem] p-6 h-96 animate-pulse"></div>
             </div>
         </div>
-        <div class="text-center text-xs text-slate-400 mt-12 pt-8 border-t">
-            &copy; 2026 <span class="dyn-site-name">Cepat Digital</span>. All rights reserved.
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-12 px-6 border-t border-white/20 dark:border-white/5">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white shadow-lg">
+                    <i data-lucide="zap" class="w-4 h-4 fill-current"></i>
+                </div>
+                <span class="font-extrabold text-xl tracking-tight dyn-site-name">Solvin Digital</span>
+            </div>
+            <p class="text-sm font-bold text-slate-400 uppercase tracking-[0.2em]">
+                &copy; 2026 Solvin Digital. All Rights Reserved.
+            </p>
+            <div class="flex items-center gap-6 text-slate-400">
+                <a href="#" class="hover:text-primary transition-colors"><i data-lucide="instagram" class="w-5 h-5"></i></a>
+                <a href="#" class="hover:text-primary transition-colors"><i data-lucide="facebook" class="w-5 h-5"></i></a>
+                <a href="#" class="hover:text-primary transition-colors"><i data-lucide="twitter" class="w-5 h-5"></i></a>
+            </div>
         </div>
     </footer>
 
+    <!-- Scripts -->
     <script>
-        // CACHE_KEY katalog tetap di sini
-        const CACHE_KEY_CATALOG = 'cepat_public_catalog';
+        lucide.createIcons();
 
-        // Fungsi Render HTML Produk
+        async function loadPublicCatalog() {
+            const container = document.getElementById('product-list');
+            try {
+                const res = await fetch(SCRIPT_URL, { 
+                    method: 'POST', 
+                    body: JSON.stringify({ action: 'get_products' }) 
+                });
+                const d = await res.json();
+                
+                if (d.status === 'success') {
+                    renderCatalog(d.available);
+                }
+            } catch (e) {
+                console.error("Gagal memuat katalog", e);
+                container.innerHTML = `<div class="col-span-full text-center py-10 text-slate-400 font-bold">Terjadi kesalahan koneksi. Silakan refresh halaman.</div>`;
+            }
+        }
+
         function renderCatalog(products) {
-            const container = document.getElementById('public-products');
-            
-            // Safety check: Pastikan products adalah array valid
-            if (!products || !Array.isArray(products) || products.length === 0) {
-                container.innerHTML = '<p class="text-slate-400 text-center col-span-full py-10 border-2 border-dashed rounded-3xl">Katalog sedang diperbarui. Silakan kembali lagi nanti.</p>';
+            const container = document.getElementById('product-list');
+            if (!products || products.length === 0) {
+                container.innerHTML = `<div class="col-span-full text-center py-10 text-slate-400 font-bold italic">Belum ada produk tersedia.</div>`;
                 return;
             }
 
-            // Dapatkan Affiliate Ref (URL Priority -> LocalStorage Fallback)
-            const urlParams = new URLSearchParams(window.location.search);
-            const affRef = urlParams.get('ref') || urlParams.get('aff_id') || localStorage.getItem('cepat_affiliate');
-            const affParam = affRef ? `&ref=${affRef}` : '';
-
-            container.innerHTML = [...products].reverse().map((p, index) => {
-                let delayClass = `delay-${(index % 3) + 1}`;
-                
-                // Logic URL Detail (Bisa ke LP atau Checkout)
-                let detailUrl = (p.lp_url && p.lp_url !== "") ? p.lp_url : `checkout.html?id=${p.id}`;
-                // Append ref to detailUrl
-                if(affRef) {
-                     detailUrl += (detailUrl.includes('?') ? '&' : '?') + `ref=${affRef}`;
-                }
-
-                // Logic URL Checkout (Langsung ke Transaksi)
-                const checkoutUrl = `checkout.html?id=${p.id}${affParam}`;
-
+            container.innerHTML = products.map(p => {
+                const lpUrl = p.lp_url || `checkout.html?id=${p.id}`;
                 return `
-                <div class="bg-white p-4 md:p-8 rounded-[1.5rem] md:rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-xl hover:-translate-y-2 transition-all flex flex-col h-full fade-in ${delayClass}">
-                    ${p.image_url ? `<div class="w-full aspect-square rounded-xl md:rounded-2xl overflow-hidden mb-4 md:mb-6 border border-slate-100"><img src="${p.image_url}" class="w-full h-full object-cover transform hover:scale-105 transition-transform duration-500" onerror="this.style.display='none'"></div>` : ''}
-                    <h3 class="text-sm md:text-xl font-bold text-slate-800 mb-1 md:mb-2 line-clamp-2">${p.title}</h3>
-                    <p class="text-xs md:text-sm text-slate-500 mb-4 md:mb-8 flex-1 line-clamp-3">${p.desc || 'Dapatkan akses eksklusif ke produk berkualitas tinggi yang telah terbukti memberikan hasil.'}</p>
-                    <div class="flex flex-col md:flex-row md:items-center justify-between mt-auto pt-4 md:pt-6 border-t border-slate-50 gap-3 md:gap-0">
-                        <span class="text-sm md:text-lg font-black text-slate-800 mb-3 md:mb-0">Rp ${Number(p.harga).toLocaleString('id-ID')}</span>
-                        
-                        <div class="flex gap-2 w-full md:w-auto">
-                            <a href="${detailUrl}" 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                class="bg-slate-100 text-slate-600 px-3 py-2 md:px-5 md:py-3 rounded-lg md:rounded-xl font-bold text-[10px] md:text-xs hover:bg-slate-200 transition-colors text-center flex-1 md:flex-none">
-                                Detail
-                            </a>
-                            <a href="${checkoutUrl}" 
-                                class="bg-[#EE4D2D] text-white px-3 py-2 md:px-5 md:py-3 rounded-lg md:rounded-xl font-bold text-[10px] md:text-xs hover:opacity-90 transition-opacity shadow-lg shadow-orange-200 text-center flex-1 md:flex-none">
-                                Check Out
-                            </a>
+                <div class="glass-card rounded-[2.5rem] p-6 flex flex-col group hover:-translate-y-2 transition-all duration-500 overflow-hidden relative">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-primary/10 transition-colors"></div>
+                    
+                    <div class="w-full aspect-[4/3] rounded-3xl overflow-hidden mb-6 bg-slate-100 dark:bg-slate-800 relative">
+                        <img src="${p.image_url || 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?q=80&w=1074&auto=format&fit=crop'}" 
+                             class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="${p.title}">
+                        <div class="absolute top-4 right-4 glass px-3 py-1.5 rounded-xl font-black text-[10px] text-primary uppercase tracking-widest border-primary/20">
+                            Terlaris
                         </div>
                     </div>
+                    
+                    <div class="flex-1 space-y-3 relative z-10">
+                        <h3 class="text-2xl font-black text-slate-900 dark:text-white leading-tight group-hover:text-primary transition-colors line-clamp-2">${p.title}</h3>
+                        <p class="text-sm text-slate-500 dark:text-slate-400 font-medium line-clamp-2">${p.desc || 'Mulai bisnis digitalmu hari ini dengan produk siap pakai.'}</p>
+                        
+                        <div class="pt-4 flex items-center justify-between">
+                            <div class="space-y-1">
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Harga Member</p>
+                                <p class="text-2xl font-black text-primary tracking-tighter">Rp ${Number(p.harga).toLocaleString('id-ID')}</p>
+                            </div>
+                            <div class="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
+                                <i data-lucide="arrow-right" class="w-6 h-6"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <a href="${lpUrl}" class="absolute inset-0 z-20" aria-label="Lihat Detail ${p.title}"></a>
                 </div>
                 `;
             }).join('');
@@ -266,49 +312,7 @@
             lucide.createIcons();
         }
 
-        // --> FUNGSI LOADING SAT SET (Optimistic UI & Background Sync)
-        async function loadPublicCatalog() {
-            const cachedData = localStorage.getItem(CACHE_KEY_CATALOG);
-            
-            // JIKA ADA CACHE: Langsung render tanpa spinner loading!
-            if (cachedData) {
-                try {
-                    renderCatalog(JSON.parse(cachedData));
-                } catch(e) {
-                    console.error("Cache corrupted", e);
-                    localStorage.removeItem(CACHE_KEY_CATALOG);
-                }
-            } 
-
-            // Pengecekan data terbaru di belakang layar
-            try {
-                if(typeof SCRIPT_URL === 'undefined') return; // Cek SCRIPT_URL dari config.js
-                
-                const res = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'get_products', email: '' }) });
-                const r = await res.json();
-                
-                if (r.status === 'success') {
-                    // Pastikan r.available adalah array, jika tidak gunakan array kosong
-                    const data = Array.isArray(r.available) ? r.available : [];
-                    const freshData = JSON.stringify(data);
-                    
-                    if(cachedData !== freshData) {
-                        localStorage.setItem(CACHE_KEY_CATALOG, freshData);
-                        renderCatalog(data);
-                    }
-                }
-            } catch (err) { 
-                console.error('Background sync failed', err);
-                if (!cachedData) {
-                    document.getElementById('public-products').innerHTML = '<p class="text-red-500 text-center col-span-full bg-red-50 py-4 rounded-2xl">Gagal memuat katalog. Coba refresh halaman.</p>';
-                }
-            }
-        }
-        
-        window.onload = () => { 
-            lucide.createIcons(); 
-            loadPublicCatalog(); 
-        };
+        window.onload = loadPublicCatalog;
     </script>
 </body>
 </html>
