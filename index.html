@@ -1,16 +1,38 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" class="scroll-smooth">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Solvin Digital - Solusi Bisnis Produk Digital</title>
+    
     <script src="config.js?v=2026_1"></script>
+    <script src="theme.js?v=2026_1"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = window.tailwindConfig;
+    </script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; transition: background-color 0.3s ease, color 0.3s ease; }
+        .glass { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(10px); }
+        .dark .glass { background: rgba(15, 23, 42, 0.8); }
+        .hero-gradient { background: radial-gradient(circle at top right, rgba(253, 156, 153, 0.15), transparent), radial-gradient(circle at bottom left, rgba(79, 70, 229, 0.05), transparent); }
+        .dark .hero-gradient { background: radial-gradient(circle at top right, rgba(253, 156, 153, 0.1), transparent), radial-gradient(circle at bottom left, rgba(15, 23, 42, 1), transparent); }
+        .fade-in { animation: fadeIn 0.6s ease-out forwards; opacity: 0; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+    </style>
 
     <script>
         (function() {
-            const CACHE_KEY = 'cepat_global_settings';
-            const CACHE_AGE = 60 * 60 * 1000; 
+            const CACHE_KEY = 'solvin_global_settings';
             window.waAdminGlobal = '';
 
             function applyGlobalSettings(data) {
-                // Eksekusi Cepat (Favicon & Title Browser)
                 if(data.site_favicon) {
                     let link = document.querySelector("link[rel~='icon']");
                     if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); }
@@ -18,73 +40,19 @@
                 }
                 if(data.wa_admin) window.waAdminGlobal = data.wa_admin;
                 
-                // Helper Meta Tags
-                const setMeta = (attrName, attrValue, content) => {
-                    if(!content) return;
-                    let element = document.querySelector(`meta[${attrName}="${attrValue}"]`);
-                    if (!element) {
-                        element = document.createElement('meta');
-                        element.setAttribute(attrName, attrValue);
-                        document.head.appendChild(element);
-                    }
-                    element.setAttribute('content', content);
-                };
-
-                // Auto Replace Text di Title Browser & Meta Title
                 if(data.site_name) {
-                    document.title = document.title.replace(/Cepat Digital/gi, data.site_name).replace(/Cepat/gi, data.site_name);
-                    setMeta('property', 'og:title', data.site_name);
-                    setMeta('name', 'title', data.site_name);
+                    document.title = `${data.site_name} - Solusi Bisnis Produk Digital`;
                 }
 
-                // Tagline -> Meta Description
-                if(data.site_tagline) {
-                    setMeta('property', 'og:description', data.site_tagline);
-                    setMeta('name', 'description', data.site_tagline);
-                }
-
-                // Logo URL -> Meta Image
-                if(data.site_logo) {
-                    setMeta('property', 'og:image', data.site_logo);
-                    setMeta('name', 'image', data.site_logo);
-                }
-
-                // Eksekusi DOM HTML (Menyuntikkan Teks ke Halaman)
                 const updateDomElements = () => {
                     if(data.site_name) {
                         document.querySelectorAll('.dyn-site-name').forEach(el => { el.innerText = data.site_name; });
-                        const logoImg = document.getElementById('dyn-site-logo');
-                        if(logoImg && logoImg.alt === '') logoImg.alt = data.site_name;
                     }
-                    
-                    // INJEKSI TAGLINE WEB
-                    if(data.site_tagline) {
-                        document.querySelectorAll('.dyn-site-tagline').forEach(el => {
-                            el.innerText = data.site_tagline;
-                        });
-                    }
-
-                    // INJEKSI LOGO URL
-                if(data.site_logo) {
-                    const img = document.getElementById('dyn-site-logo');
-                    if (img) {
-                        img.src = data.site_logo;
-                        img.classList.remove('hidden');
-                        img.classList.add('block'); // Ensure it displays
-                    }
-                    const fb = document.getElementById('logo-fallback');
-                    if (fb) fb.classList.add('hidden');
-                }
-
-                    // INJEKSI KONTAK
-                    if(data.contact_email) {
-                        const a = document.getElementById('dyn-email-link');
-                        if(a) { a.href = 'mailto:' + data.contact_email; a.innerText = data.contact_email; }
-                    }
-                    if(data.wa_admin) {
-                        const wa = String(data.wa_admin).replace(/[^0-9]/g,'');
-                        const a = document.getElementById('dyn-wa-link');
-                        if(a) { a.href = 'https://wa.me/' + wa; a.innerText = (wa.startsWith('62')?'+':'') + wa; }
+                    if(data.site_logo) {
+                        const img = document.getElementById('dyn-site-logo');
+                        if (img) { img.src = data.site_logo; img.classList.remove('hidden'); }
+                        const fb = document.getElementById('logo-fallback');
+                        if (fb) fb.classList.add('hidden');
                     }
                 };
 
@@ -98,217 +66,284 @@
             const cachedStr = localStorage.getItem(CACHE_KEY);
             let cached = null;
             try { cached = JSON.parse(cachedStr); } catch(e){}
-            const now = Date.now();
 
             if (cached && cached.data) { applyGlobalSettings(cached.data); }
 
-            // Menggunakan SCRIPT_URL yang ditarik dari config.js
-            // Strategy: Stale-While-Revalidate
-            // 1. Tampilkan cache jika ada (Instant Loading)
-            // 2. Selalu fetch background untuk update terbaru (Eventual Consistency)
-            
-            if(typeof SCRIPT_URL === 'undefined') { console.error("SCRIPT_URL belum didefinisikan di config.js!"); return; }
-
-            fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'get_global_settings' }) })
-                .then(res => res.json())
-                .then(r => {
-                    if(r.status === 'success') {
-                        // Pastikan format data konsisten untuk perbandingan
-                        const currentDataStr = JSON.stringify(r.data);
-                        const cachedDataStr = cached ? JSON.stringify(cached.data) : "";
-
-                        // Hanya update jika ada perbedaan data
-                        if (!cached || cachedDataStr !== currentDataStr) {
+            if(typeof SCRIPT_URL !== 'undefined') {
+                fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'get_global_settings' }) })
+                    .then(res => res.json())
+                    .then(r => {
+                        if(r.status === 'success') {
                             localStorage.setItem(CACHE_KEY, JSON.stringify({ data: r.data, time: Date.now() }));
                             applyGlobalSettings(r.data);
                         }
-                    }
-                }).catch(e => console.error("Global Settings Sync Failed", e));
+                    }).catch(e => console.error("Settings Sync Failed", e));
+            }
         })();
     </script>
-
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cepat Digital Teknologi</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; }
-        /* Animasi Muncul Halus */
-        .fade-in { animation: fadeIn 0.4s ease-out forwards; opacity: 0; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-        /* Delay beruntun untuk grid produk */
-        .delay-1 { animation-delay: 0.1s; }
-        .delay-2 { animation-delay: 0.2s; }
-        .delay-3 { animation-delay: 0.3s; }
-    </style>
 </head>
-<body class="bg-[#f8f9fa] text-slate-800">
+<body class="bg-slate-50 dark:bg-darkBg text-slate-800 dark:text-slate-200">
 
-    <header class="bg-white/80 backdrop-blur-md border-b sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center gap-4">
-           <div class="flex-1 flex items-center gap-3 min-w-0">
-                <img id="dyn-site-logo" src="" alt="" class="h-8 md:h-10 w-auto hidden select-none object-contain flex-shrink-0 transition-transform hover:scale-105" loading="lazy">
-                <i id="logo-fallback" data-lucide="layers" class="w-8 h-8 text-indigo-600 flex-shrink-0 transition-transform hover:rotate-12"></i>
-                <strong class="dyn-site-name text-lg md:text-2xl font-black text-indigo-600 tracking-tighter uppercase truncate block">CEPAT DIGITAL TEKNOLOGI</strong>
+    <!-- Navbar -->
+    <nav class="glass border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50 transition-all duration-300">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <img id="dyn-site-logo" src="" alt="" class="h-10 w-auto hidden object-contain">
+                <div id="logo-fallback" class="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-primary transition-transform hover:scale-110">
+                    <i data-lucide="zap" class="w-6 h-6 fill-current"></i>
+                </div>
+                <span class="dyn-site-name text-2xl font-black tracking-tighter text-slate-900 dark:text-white">SOLVIN</span>
             </div>
-            <a href="login.html" class="flex-shrink-0 bg-indigo-600 text-white px-5 py-2.5 md:px-6 md:py-3 rounded-full font-bold text-xs md:text-sm shadow-lg shadow-indigo-200 hover:bg-indigo-700 hover:shadow-indigo-300 hover:-translate-y-0.5 transition-all flex items-center gap-2 group whitespace-nowrap">
-                <span>Login</span>
-                <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
-            </a>
+            
+            <div class="flex items-center gap-4">
+                <!-- Theme Toggle -->
+                <button onclick="toggleDarkMode()" class="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+                    <i data-lucide="sun" class="theme-icon-sun w-5 h-5 hidden"></i>
+                    <i data-lucide="moon" class="theme-icon-moon w-5 h-5"></i>
+                </button>
+                <a href="login.html" class="bg-primary hover:bg-primary-dark text-white px-6 py-3 rounded-2xl font-bold text-sm shadow-primary hover:-translate-y-0.5 transition-all flex items-center gap-2">
+                    <span>Masuk</span>
+                    <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                </a>
+            </div>
         </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="relative pt-20 pb-32 overflow-hidden hero-gradient">
+        <div class="max-w-7xl mx-auto px-6 relative z-10">
+            <div class="max-w-4xl mx-auto text-center">
+                <div class="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest mb-8 fade-in">
+                    <i data-lucide="sparkles" class="w-4 h-4"></i>
+                    Digital Creator Solution
+                </div>
+                <h1 class="text-5xl md:text-7xl font-black tracking-tight text-slate-900 dark:text-white mb-8 leading-[1.1] fade-in delay-1">
+                    Solusi Bisnis <br/>
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-orange-400">Produk Digital</span>
+                </h1>
+                <p class="text-lg md:text-xl text-slate-600 dark:text-slate-400 mb-12 leading-relaxed fade-in delay-2 max-w-2xl mx-auto">
+                    Solvin Digital membantu pemula memulai bisnis digital tanpa ribet bikin produk dari nol. Fokus pada cuan, biar kami yang urus produknya.
+                </p>
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-4 fade-in delay-3">
+                    <a href="#katalog" class="w-full sm:w-auto bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-10 py-5 rounded-3xl font-extrabold text-lg shadow-2xl hover:scale-105 transition-all">
+                        Lihat Katalog Produk
+                    </a>
+                    <a href="https://wa.me/628123456789" class="w-full sm:w-auto bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 px-10 py-5 rounded-3xl font-extrabold text-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2">
+                        Konsultasi Gratis
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Decorative Blobs -->
+        <div class="absolute top-1/4 -left-20 w-96 h-96 bg-primary/10 rounded-full blur-3xl -z-10 animate-pulse"></div>
+        <div class="absolute bottom-1/4 -right-20 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl -z-10 animate-pulse delay-700"></div>
     </header>
 
-    <section class="max-w-7xl mx-auto px-6 py-20 text-center">
-        <div class="inline-block bg-indigo-50 text-indigo-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest mb-6 fade-in">Mulai Bisnis Anda dari Sini</div>
-        <h1 class="text-4xl md:text-6xl font-black tracking-tight mb-6 text-slate-900 fade-in delay-1">Produk Digital Praktis untuk <br><span class="text-indigo-600">UMKM yang Baru Mulai</span></h1>
-        <p class="text-xl md:text-2xl text-slate-500 max-w-2xl mx-auto mb-10 fade-in delay-2 font-medium">Akses produk digital yang dirancang khusus untuk UMKM pemula—langsung pakai, langsung jalan, tanpa perlu pengalaman teknis.</p>
-        <a href="#katalog" class="inline-block bg-slate-900 text-white px-8 py-4 rounded-full font-bold text-lg shadow-xl shadow-slate-300 hover:scale-105 transition-all fade-in delay-3">Jelajahi Katalog Sekarang</a>
-    </section>
-
-    <section id="katalog" class="max-w-7xl mx-auto px-6 py-10 mb-20 scroll-mt-24">
-        <div class="text-center mb-12">
-            <h2 class="text-3xl font-black mb-4">Pilihan Produk Digital</h2>
-            <p class="text-slate-500">Sudah digunakan ribuan pelaku UMKM di seluruh Indonesia.</p>
-        </div>
-        
-        <div id="public-products" class="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-8">
-            <div id="katalog-loader" class="col-span-full text-center py-10">
-                <div class="animate-spin w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest animate-pulse">Memuat Katalog Produk...</p>
+    <!-- Stats/Trust Section -->
+    <section class="max-w-7xl mx-auto px-6 -mt-16 relative z-20">
+        <div class="bg-white dark:bg-darkCard p-8 md:p-12 rounded-[3rem] shadow-soft border border-slate-100 dark:border-slate-800 grid grid-cols-1 md:grid-cols-3 gap-12 text-center">
+            <div class="space-y-2">
+                <div class="text-4xl font-black text-primary">100jt+</div>
+                <p class="text-sm font-bold text-slate-400 uppercase tracking-widest">Penghasilan 3 Bulan</p>
+            </div>
+            <div class="space-y-2 md:border-x border-slate-100 dark:border-slate-800">
+                <div class="text-4xl font-black text-slate-900 dark:text-white">50+</div>
+                <p class="text-sm font-bold text-slate-400 uppercase tracking-widest">Produk Siap Jual</p>
+            </div>
+            <div class="space-y-2">
+                <div class="text-4xl font-black text-slate-900 dark:text-white">1000+</div>
+                <p class="text-sm font-bold text-slate-400 uppercase tracking-widest">Partner Tergabung</p>
             </div>
         </div>
     </section>
 
-    <footer class="bg-white border-t py-12 mt-20">
-        <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
-            <div>
-                <h3 class="text-xl font-black text-indigo-600 mb-4 dyn-site-name uppercase">CEPAT</h3>
-                <p class="text-sm text-slate-500 dyn-site-tagline">Platform penyedia produk digital dan kursus online terpercaya di Indonesia.</p>
+    <!-- Story Section -->
+    <section class="max-w-7xl mx-auto px-6 py-32">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+            <div class="relative">
+                <div class="aspect-square rounded-[3rem] overflow-hidden shadow-2xl rotate-3 transition-transform hover:rotate-0 duration-500">
+                    <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=800" alt="Success Story" class="w-full h-full object-cover">
+                </div>
+                <div class="absolute -bottom-10 -left-10 bg-white dark:bg-darkCard p-8 rounded-3xl shadow-soft border border-slate-100 dark:border-slate-800 -rotate-3 hover:rotate-0 transition-transform duration-500 max-w-[280px]">
+                    <p class="text-slate-500 dark:text-slate-400 italic text-sm mb-4">"Rahasia sukses bisnis digital kini ada di tanganmu!"</p>
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-primary rounded-full"></div>
+                        <div>
+                            <p class="font-bold text-sm">Owner Solvin</p>
+                            <p class="text-[10px] text-primary font-bold uppercase">Digital Creator</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="space-y-8">
+                <h2 class="text-4xl md:text-5xl font-black text-slate-900 dark:text-white leading-tight">
+                    Berawal dari <span class="text-primary">Rahasia Rp100 Juta</span> dalam 3 Bulan
+                </h2>
+                <div class="space-y-6 text-lg text-slate-600 dark:text-slate-400 leading-relaxed">
+                    <p>
+                        Dalam 3 bulan pertama, aku berhasil menghasilkan lebih dari <strong>Rp100 juta</strong> hanya dari produk digital. 
+                        Sekarang, waktunya aku berbagi rahasia & produk yang bisa kamu pakai untuk mulai cuan!
+                    </p>
+                    <p>
+                        Bayangin kalau kamu langsung punya paket produk siap jual tanpa perlu bikin dari nol. 
+                        Nggak usah pusing riset, desain, atau nulis copywriting. Semua sudah aku siapkan!
+                    </p>
+                    <div class="p-6 bg-primary/5 rounded-3xl border border-primary/10">
+                        <p class="text-primary font-bold mb-2">Mengapa Produk Digital?</p>
+                        <ul class="space-y-3">
+                            <li class="flex items-center gap-3 text-sm">
+                                <i data-lucide="check-circle-2" class="w-5 h-5 text-primary"></i>
+                                Modal Sekali, Untung Berkali-kali
+                            </li>
+                            <li class="flex items-center gap-3 text-sm">
+                                <i data-lucide="check-circle-2" class="w-5 h-5 text-primary"></i>
+                                Tidak Ada Stok Fisik & Pengiriman
+                            </li>
+                            <li class="flex items-center gap-3 text-sm">
+                                <i data-lucide="check-circle-2" class="w-5 h-5 text-primary"></i>
+                                Margin Keuntungan Hingga 100%
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Catalog CTA -->
+    <section id="katalog" class="max-w-7xl mx-auto px-6 py-20">
+        <div class="text-center max-w-3xl mx-auto mb-16">
+            <h2 class="text-4xl font-black text-slate-900 dark:text-white mb-6">Pilih Produk & Mulai Jualan</h2>
+            <p class="text-slate-500 dark:text-slate-400 text-lg leading-relaxed">
+                Produk ini sudah terbukti laris terjual dan bisa langsung kamu branding jadi milikmu sendiri. Nikmati 100% keuntungan tanpa potongan!
+            </p>
+        </div>
+
+        <div id="public-products" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div id="katalog-loader" class="col-span-full text-center py-20">
+                <div class="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-6"></div>
+                <p class="text-slate-400 font-bold uppercase tracking-widest animate-pulse">Menyiapkan Katalog Cuan...</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-white dark:bg-darkCard border-t border-slate-200 dark:border-slate-800 pt-20 pb-10 mt-20 transition-colors">
+        <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-12 mb-20">
+            <div class="col-span-1 md:col-span-2 space-y-6">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white">
+                        <i data-lucide="zap" class="w-6 h-6 fill-current"></i>
+                    </div>
+                    <span class="text-2xl font-black tracking-tighter dyn-site-name uppercase">SOLVIN</span>
+                </div>
+                <p class="text-slate-500 dark:text-slate-400 max-w-sm leading-relaxed">
+                    Platform edukasi dan penyedia produk digital PLR/MRR terbaik untuk membantu kamu memulai bisnis internet dengan cepat.
+                </p>
             </div>
             <div>
-                <h4 class="font-bold mb-4 text-slate-800">Informasi</h4>
-                <ul class="text-sm text-slate-500 space-y-2">
-                    <li><a href="/p.html?s=tentang-kami" class="hover:text-indigo-600 transition-colors">Tentang Kami</a></li>
-                    <li><a href="/p.html?s=syarat-ketentuan" class="hover:text-indigo-600 transition-colors">Syarat & Ketentuan</a></li>
-                    <li><a href="/p.html?s=kebijakan-privasi" class="hover:text-indigo-600 transition-colors">Kebijakan Privasi</a></li>
+                <h4 class="font-bold mb-6 text-slate-900 dark:text-white uppercase tracking-widest text-xs">Menu Cepat</h4>
+                <ul class="space-y-4 text-sm text-slate-500 dark:text-slate-400">
+                    <li><a href="#" class="hover:text-primary transition-colors">Home</a></li>
+                    <li><a href="#katalog" class="hover:text-primary transition-colors">Katalog</a></li>
+                    <li><a href="login.html" class="hover:text-primary transition-colors">Member Area</a></li>
                 </ul>
             </div>
             <div>
-                <h4 class="font-bold mb-4 text-slate-800">Hubungi Kami</h4>
-                <p class="text-sm text-slate-500 mb-2">Email: <a id="dyn-email-link" href="#" class="text-indigo-600 hover:underline">...</a></p>
-                <p class="text-sm text-slate-500">WhatsApp: <a id="dyn-wa-link" href="#" class="text-indigo-600 hover:underline">...</a></p>
+                <h4 class="font-bold mb-6 text-slate-900 dark:text-white uppercase tracking-widest text-xs">Hubungi Kami</h4>
+                <ul class="space-y-4 text-sm text-slate-500 dark:text-slate-400">
+                    <li class="flex items-center gap-3">
+                        <i data-lucide="mail" class="w-4 h-4"></i>
+                        <span id="dyn-email-link">...</span>
+                    </li>
+                    <li class="flex items-center gap-3">
+                        <i data-lucide="message-circle" class="w-4 h-4"></i>
+                        <span id="dyn-wa-link">...</span>
+                    </li>
+                </ul>
             </div>
         </div>
-        <div class="text-center text-xs text-slate-400 mt-12 pt-8 border-t">
-            &copy; 2026 <span class="dyn-site-name">Cepat Digital</span>. All rights reserved.
+        <div class="max-w-7xl mx-auto px-6 pt-10 border-t border-slate-100 dark:border-slate-800 text-center">
+            <p class="text-xs text-slate-400">&copy; 2026 <span class="dyn-site-name">Solvin Digital</span>. Built with ❤️ for Digital Creators.</p>
         </div>
     </footer>
 
     <script>
-        // CACHE_KEY katalog tetap di sini
-        const CACHE_KEY_CATALOG = 'cepat_public_catalog';
+        const CACHE_KEY_CATALOG = 'solvin_public_catalog';
 
-        // Fungsi Render HTML Produk
         function renderCatalog(products) {
             const container = document.getElementById('public-products');
-            
-            // Safety check: Pastikan products adalah array valid
             if (!products || !Array.isArray(products) || products.length === 0) {
-                container.innerHTML = '<p class="text-slate-400 text-center col-span-full py-10 border-2 border-dashed rounded-3xl">Katalog sedang diperbarui. Silakan kembali lagi nanti.</p>';
+                container.innerHTML = '<p class="text-slate-400 text-center col-span-full py-20 border-2 border-dashed rounded-[3rem] dark:border-slate-800">Belum ada produk yang tersedia.</p>';
                 return;
             }
 
-            // Dapatkan Affiliate Ref (URL Priority -> LocalStorage Fallback)
             const urlParams = new URLSearchParams(window.location.search);
-            const affRef = urlParams.get('ref') || urlParams.get('aff_id') || localStorage.getItem('cepat_affiliate');
+            const affRef = urlParams.get('ref') || urlParams.get('aff_id') || localStorage.getItem('solvin_affiliate');
             const affParam = affRef ? `&ref=${affRef}` : '';
 
             container.innerHTML = [...products].reverse().map((p, index) => {
                 let delayClass = `delay-${(index % 3) + 1}`;
-                
-                // Logic URL Detail (Bisa ke LP atau Checkout)
                 let detailUrl = (p.lp_url && p.lp_url !== "") ? p.lp_url : `checkout.html?id=${p.id}`;
-                // Append ref to detailUrl
-                if(affRef) {
-                     detailUrl += (detailUrl.includes('?') ? '&' : '?') + `ref=${affRef}`;
-                }
-
-                // Logic URL Checkout (Langsung ke Transaksi)
+                if(affRef) detailUrl += (detailUrl.includes('?') ? '&' : '?') + `ref=${affRef}`;
                 const checkoutUrl = `checkout.html?id=${p.id}${affParam}`;
 
                 return `
-                <div class="bg-white p-4 md:p-8 rounded-[1.5rem] md:rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-xl hover:-translate-y-2 transition-all flex flex-col h-full fade-in ${delayClass}">
-                    ${p.image_url ? `<div class="w-full aspect-square rounded-xl md:rounded-2xl overflow-hidden mb-4 md:mb-6 border border-slate-100"><img src="${p.image_url}" class="w-full h-full object-cover transform hover:scale-105 transition-transform duration-500" onerror="this.style.display='none'"></div>` : ''}
-                    <h3 class="text-sm md:text-xl font-bold text-slate-800 mb-1 md:mb-2 line-clamp-2">${p.title}</h3>
-                    <p class="text-xs md:text-sm text-slate-500 mb-4 md:mb-8 flex-1 line-clamp-3">${p.desc || 'Dapatkan akses eksklusif ke produk berkualitas tinggi yang telah terbukti memberikan hasil.'}</p>
-                    <div class="flex flex-col md:flex-row md:items-center justify-between mt-auto pt-4 md:pt-6 border-t border-slate-50 gap-3 md:gap-0">
-                        <span class="text-sm md:text-lg font-black text-slate-800 mb-3 md:mb-0">Rp ${Number(p.harga).toLocaleString('id-ID')}</span>
-                        
-                        <div class="flex gap-2 w-full md:w-auto">
-                            <a href="${detailUrl}" 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                class="bg-slate-100 text-slate-600 px-3 py-2 md:px-5 md:py-3 rounded-lg md:rounded-xl font-bold text-[10px] md:text-xs hover:bg-slate-200 transition-colors text-center flex-1 md:flex-none">
-                                Detail
+                <div class="group bg-white dark:bg-darkCard rounded-[2.5rem] p-6 border border-slate-100 dark:border-slate-800 shadow-soft hover:shadow-primary transition-all duration-500 hover:-translate-y-2 flex flex-col h-full fade-in ${delayClass}">
+                    ${p.image_url ? `
+                        <div class="relative w-full aspect-[4/3] rounded-3xl overflow-hidden mb-6">
+                            <img src="${p.image_url}" class="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700" loading="lazy">
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        </div>
+                    ` : ''}
+                    <div class="flex-1 space-y-3">
+                        <h3 class="text-xl font-bold text-slate-800 dark:text-white line-clamp-2 group-hover:text-primary transition-colors">${p.title}</h3>
+                        <p class="text-sm text-slate-500 dark:text-slate-400 line-clamp-3 leading-relaxed">
+                            ${p.desc || 'Mulai bisnis digitalmu hari ini dengan produk siap pakai berkualitas tinggi.'}
+                        </p>
+                    </div>
+                    <div class="mt-8 pt-6 border-t border-slate-50 dark:border-slate-800 flex items-center justify-between">
+                        <div class="flex flex-col">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Harga</span>
+                            <span class="text-xl font-black text-slate-900 dark:text-white">Rp ${Number(p.harga).toLocaleString('id-ID')}</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <a href="${detailUrl}" class="p-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors" title="Detail">
+                                <i data-lucide="eye" class="w-5 h-5"></i>
                             </a>
-                            <a href="${checkoutUrl}" 
-                                class="bg-[#EE4D2D] text-white px-3 py-2 md:px-5 md:py-3 rounded-lg md:rounded-xl font-bold text-[10px] md:text-xs hover:opacity-90 transition-opacity shadow-lg shadow-orange-200 text-center flex-1 md:flex-none">
-                                Check Out
+                            <a href="${checkoutUrl}" class="px-6 py-4 bg-primary text-white rounded-2xl font-bold text-sm shadow-primary hover:shadow-lg transition-all flex items-center gap-2">
+                                Beli Sekarang
                             </a>
                         </div>
                     </div>
                 </div>
                 `;
             }).join('');
-            
             lucide.createIcons();
         }
 
-        // --> FUNGSI LOADING SAT SET (Optimistic UI & Background Sync)
         async function loadPublicCatalog() {
             const cachedData = localStorage.getItem(CACHE_KEY_CATALOG);
-            
-            // JIKA ADA CACHE: Langsung render tanpa spinner loading!
             if (cachedData) {
-                try {
-                    renderCatalog(JSON.parse(cachedData));
-                } catch(e) {
-                    console.error("Cache corrupted", e);
-                    localStorage.removeItem(CACHE_KEY_CATALOG);
-                }
+                try { renderCatalog(JSON.parse(cachedData)); } catch(e) { localStorage.removeItem(CACHE_KEY_CATALOG); }
             } 
 
-            // Pengecekan data terbaru di belakang layar
             try {
-                if(typeof SCRIPT_URL === 'undefined') return; // Cek SCRIPT_URL dari config.js
-                
+                if(typeof SCRIPT_URL === 'undefined') return;
                 const res = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'get_products', email: '' }) });
                 const r = await res.json();
-                
                 if (r.status === 'success') {
-                    // Pastikan r.available adalah array, jika tidak gunakan array kosong
                     const data = Array.isArray(r.available) ? r.available : [];
-                    const freshData = JSON.stringify(data);
-                    
-                    if(cachedData !== freshData) {
-                        localStorage.setItem(CACHE_KEY_CATALOG, freshData);
-                        renderCatalog(data);
-                    }
+                    localStorage.setItem(CACHE_KEY_CATALOG, JSON.stringify(data));
+                    renderCatalog(data);
                 }
             } catch (err) { 
-                console.error('Background sync failed', err);
-                if (!cachedData) {
-                    document.getElementById('public-products').innerHTML = '<p class="text-red-500 text-center col-span-full bg-red-50 py-4 rounded-2xl">Gagal memuat katalog. Coba refresh halaman.</p>';
-                }
+                if (!cachedData) container.innerHTML = '<p class="text-error text-center py-10">Gagal memuat katalog.</p>';
             }
         }
         
-        window.onload = () => { 
-            lucide.createIcons(); 
-            loadPublicCatalog(); 
-        };
+        loadPublicCatalog();
     </script>
 </body>
 </html>
